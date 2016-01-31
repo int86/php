@@ -12,6 +12,7 @@ mysql_query("SET NAMES utf8");
 //主程序
 function main($url) {
     $urlArr = getAllUrl($url);
+    var_dump($urlArr);exit;
     foreach ($urlArr as $url) {
         $arr = explode('/', $url);
         $subjectID = $arr[4];
@@ -25,7 +26,7 @@ function main($url) {
 
 //正则匹配所有字段信息
 function getMovieInfo($url, $subjectID = '') {
-    $html = file_get_contents($url);
+    $html = getHtml($url);
     preg_match_all('/(?<=dBy">)[^<=dBy">].*?[^<\/a>](?=<\/a>)/', $html, $m1);  //导演
     $director = '';
     foreach ($m1[0] as $v) {
@@ -92,13 +93,49 @@ function insertDB($data) {
 
 //匹配此页面下所有有电影链接地址
 function getAllUrl($url) {
-    $html = file_get_contents($url);
+    $html = getHtml($url);
     preg_match_all('/http:\/\/movie\.douban\.com\/subject\/\d+/', $html, $m9);
     $urlArr = array_unique($m9[0]); //去重
     return $urlArr;
 }
 
+//模拟浏览器
+function getHtml($url){
+    $header = FormatHeader($url); 
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HEADER, 0);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+    $html = curl_exec($ch);
+    curl_close($ch);
+    return htmlspecialchars($html);
+     
+}
+
+//构造请求头
+function FormatHeader($url) 
+{ 
+// 解析url 
+$temp = parse_url($url); 
+$query = isset($temp['query']) ? $temp['query'] : ''; 
+$path = isset($temp['path']) ? $temp['path'] : '/'; 
+
+$header = array ( 
+"Host: {$temp['host']}", 
+"Content-Type: text/javascript; charset=utf-8", 
+'Accept: */*', 
+'Accept-Language:zh-CN,zh;q=0.8',
+// 'Accept-Encoding:gzip, deflate, sdch',
+"Referer: http://{$temp['host']}/", 
+'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2540.0 Safari/537.36', 
+// "Content-length: 380", 
+"Connection: keep-alive" 
+); 
+// var_dump($header);exit;
+return $header; 
+} 
+
 //执行
-$url = 'http://movie.douban.com/subject/3292949/'; //起始地址
+$url = 'http://movie.douban.com/subject/25908051/'; //起始地址
 main($url);
 ?>
