@@ -12,16 +12,31 @@ mysql_query("SET NAMES utf8");
 //主程序
 function main($url) {
     $urlArr = getAllUrl($url);
-    var_dump($urlArr);exit;
-    foreach ($urlArr as $url) {
+
+
+    foreach ($urlArr as $key => $url) {
         $arr = explode('/', $url);
         $subjectID = $arr[4];
         if (!checkUrlExis($subjectID)) {
             $data = getMovieInfo($url, $subjectID);
-            $res = insertDB($data);
+            if($data['name']!=''){
+                 $res = insertDB($data);
+            }
+            if(count($urlArr) == ($key+1)){
+                foreach($urlArr as $url){
+                    $header = get_headers($url);
+                    if(!preg_match('/200/',$header[0])){
+                       continue;
+                    }else{
+                        main($url);
+                    }
+                }
+            }
             sleep(1);
         }
     }
+    
+
 }
 
 //正则匹配所有字段信息
@@ -106,7 +121,7 @@ function getHtml($url){
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_HEADER, 0);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    // curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);  //将curl_exec()获取的信息以文件流的形式返回，而不是直接输出。
     $html = curl_exec($ch);
     curl_close($ch);
     return htmlspecialchars($html);
@@ -137,6 +152,6 @@ return $header;
 } 
 
 //执行
-$url = 'http://movie.douban.com/subject/25908051/'; //起始地址
+$url = 'http://movie.douban.com/subject/11589036/'; //起始地址
 main($url);
 ?>
