@@ -12,13 +12,14 @@ mysql_query("SET NAMES utf8");
 //主程序
 function main($url) {
     $urlArr = getAllUrl($url);
-
+    // var_dump($urlArr);exit;
 
     foreach ($urlArr as $key => $url) {
         $arr = explode('/', $url);
         $subjectID = $arr[4];
+        // var_dump($subjectID);exit;
         if (!checkUrlExis($subjectID)) {
-            $data = getMovieInfo($url, $subjectID);
+            $data = getMovieInfoByApi($subjectID);
             if($data['name']!=''){
                  $res = insertDB($data);
             }
@@ -39,8 +40,8 @@ function main($url) {
 
 }
 
-//正则匹配所有字段信息
-function getMovieInfo($url, $subjectID = '') {
+//从页面正则匹配所有字段信息
+function getMovieInfoByPreg($url, $subjectID = '') {
     $html = getHtml($url);
     preg_match_all('/(?<=dBy">)[^<=dBy">].*?[^<\/a>](?=<\/a>)/', $html, $m1);  //导演
     $director = '';
@@ -82,6 +83,44 @@ function getMovieInfo($url, $subjectID = '') {
     return $data;
 }
 
+
+//从豆瓣接口读取电影信息
+function getMovieInfoByApi($subjectID){
+    $url = "http://api.douban.com/v2/movie/subject/".$subjectID;
+    $html = getHtml($url);
+    $html = preg_replace('/&quot;/', '"', $html);
+    $data = json_decode($html,true);
+
+    $star = '';
+    foreach ($data['casts'] as $v) {
+        $star .= $v['name'].'/'; 
+    }
+
+    $screenwriter = '';
+    if(isset($data['writers'])){
+            foreach ($data['writers'] as $value) {
+                $screenwriter .= $v['name'].'/'; 
+            }
+
+    }
+
+    $data = array(
+        'subjectID'=>$subjectID,
+        'name' =>$data['title'],
+        'score' =>$data['rating']['average'],
+        'type'=>implode('/', $data['genres']),
+        'director'=>$data['directors'][0]['name'],
+        'star'=>$star,
+        'screenwriter' =>$screenwriter,
+        'year' =>$data['year'],
+        'country'=>implode('/', $data['countries'])
+        );
+
+    
+    return $data;
+
+}
+
 //查看该信息在数据库是否已经存在
 function checkUrlExis($subjectID) {
     $sql = "select * from movie where subjectID = '$subjectID'";
@@ -121,7 +160,7 @@ function getHtml($url){
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_HEADER, 0);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-    // curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);  //将curl_exec()获取的信息以文件流的形式返回，而不是直接输出。
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);  //将curl_exec()获取的信息以文件流的形式返回，而不是直接输出。
     $html = curl_exec($ch);
     curl_close($ch);
     return htmlspecialchars($html);
@@ -152,6 +191,6 @@ return $header;
 } 
 
 //执行
-$url = 'http://movie.douban.com/subject/11589036/'; //起始地址
+$url = 'http://movie.douban.com/'; //起始地址
 main($url);
 ?>
